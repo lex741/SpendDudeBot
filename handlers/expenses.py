@@ -91,17 +91,17 @@ async def choose_category(query: CallbackQuery):
     user_tx.pop(user_id, None)
 
 # --- 5) История последних 5 трат с названием категории ---
-@dp.message(lambda m: m.text == "📜 История")
-async def show_history(message: Message):
-    lst = get_recent_expenses(message.from_user.id, limit=5)
-    if not lst:
-        return await message.answer("У вас ещё нет трат.", reply_markup=main_kb)
-
-    lines = []
-    for e in lst:
-        cat = get_category_by_id(e.category_id)
-        cat_name = cat.name if cat else "—"
-        ts = e.date.strftime("%Y-%m-%d %H:%M")
-        lines.append(f"{ts} — {e.amount:.2f}  [{cat_name}]  «{e.comment or '-'}»")
-
-    await message.answer("Последние траты:\n" + "\n".join(lines), reply_markup=main_kb)
+#@dp.message(lambda m: m.text == "📜 История")
+#async def show_history(message: Message):
+#    lst = get_recent_expenses(message.from_user.id, limit=5)
+#    if not lst:
+#        return await message.answer("У вас ещё нет трат.", reply_markup=main_kb)
+#
+#    lines = []
+#    for e in lst:
+#        cat = get_category_by_id(e.category_id)
+#        cat_name = cat.name if cat else "—"
+#        ts = e.date.strftime("%Y-%m-%d %H:%M")
+#        lines.append(f"{ts} — {e.amount:.2f}  [{cat_name}]  «{e.comment or '-'}»")
+#
+#    await message.answer("Последние траты:\n" + "\n".join(lines), reply_markup=main_kb)

@@ -11,6 +11,7 @@ from db.models import Base
 import handlers.categories
 import handlers.expenses
 import handlers.analytics
+import handlers.history
 
 Base.metadata.create_all(bind=engine)
 # 3) Теперь единственный dp, с которым работаем мы и хендлеры
