@@ -4,18 +4,8 @@ from aiogram.types import Message
 from bot_config import dp
 from db.database import SessionLocal
 from db.models import User
+from services.expenses import get_user_balance
 
-# заглушка, потом заменим на запрос к БД
-def get_user_balance(user_id: int) -> float:
-    db = SessionLocal()
-    user = db.query(User).get(user_id)
-    if not user:
-        user = User(user_id=user_id)
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-    db.close()
-    return user.balance
 
 @dp.message(lambda message: message.text == "💰 Баланс")
 async def cmd_balance(message: Message):

@@ -1,21 +1,15 @@
-# main.py
 import asyncio
 import os
 from dotenv import load_dotenv
-
-# 1) Импортируем bot и dp только из bot_config
 from bot_config import bot, dp
-
-# 2) Импортируем файлы с хендлерами (они регистрируют себя на dp)
 import handlers.balance   # noqa: F401
-# later: import handlers.expenses, handlers.history и т.д.
-
 from aiogram.types import Message
 from aiogram.filters import Command
 from utils.buttons import main_kb
 from db.database import engine
 from db.models import Base
 import handlers.categories
+import handlers.expenses
 
 Base.metadata.create_all(bind=engine)
 # 3) Теперь единственный dp, с которым работаем мы и хендлеры
