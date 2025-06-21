@@ -1,9 +1,9 @@
 import re
 from aiogram.types import (
     Message,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
     CallbackQuery,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
     ReplyKeyboardRemove,
 )
 from bot_config import dp
@@ -16,12 +16,15 @@ from services.categories import (
 )
 from utils.buttons import main_kb
 
-# состояние пользователя при добавлении новой категории
+# временное хранилище состояния пользователя при добавлении новой категории
 user_states: dict[int, str] = {}
 
-# Вспомогательная функция для вывода списка категорий
-async def send_categories(chat_target):
-    cats = get_categories(chat_target.from_user.id)
+async def send_categories(user_id: int, target):
+    """
+    Высылает список категорий пользователю и кнопки Добавить/Удалить.
+    target: объект с методом answer (Message или CallbackQuery.message)
+    """
+    cats = get_categories(user_id)
     if cats:
         lines = [f"{i}. {cat.name}" for i, cat in enumerate(cats, start=1)]
         text = "Ваши категории:\n" + "\n".join(lines)
@@ -34,12 +37,11 @@ async def send_categories(chat_target):
             InlineKeyboardButton(text="➖ Удалить", callback_data="cat_delete"),
         ]]
     )
-    # chat_target может быть Message или CallbackQuery.message
-    await chat_target.answer(text, reply_markup=kb)
+    await target.answer(text, reply_markup=kb)
 
 @dp.message(lambda m: m.text == "📂 Категории")
-async def show_categories(message: Message):
-    await send_categories(message)
+async def show_categories_message(message: Message):
+    await send_categories(message.from_user.id, message)
 
 @dp.callback_query(lambda c: c.data == "cat_add")
 async def on_add_button(query: CallbackQuery):
@@ -65,19 +67,24 @@ async def on_delete_button(query: CallbackQuery):
         ]
     )
     await query.message.edit_reply_markup(reply_markup=None)
-    await query.message.answer("Выберите категорию для удаления:", reply_markup=kb)
+    await query.message.answer(
+        "Выберите категорию для удаления:",
+        reply_markup=kb
+    )
     await query.answer()
 
-# Обработка простого удаления: только "del_<номер>"
+# Обработка простого удаления по позиции del_<номер>
 @dp.callback_query(lambda c: c.data and re.fullmatch(r"del_\d+", c.data))
 async def on_delete_choice(query: CallbackQuery):
     pos = int(query.data.split("_", 1)[1])
-    cats = get_categories(query.from_user.id)
+    user_id = query.from_user.id
+    cats = get_categories(user_id)
     if pos < 1 or pos > len(cats):
         return await query.answer("Неверный выбор", show_alert=True)
 
     cat = cats[pos - 1]
-    if has_expenses(query.from_user.id, cat.id):
+    if has_expenses(user_id, cat.id):
+        # подтверждение удаления и трат
         kb = InlineKeyboardMarkup(
             inline_keyboard=[[
                 InlineKeyboardButton(text="✅ Удалить всё", callback_data=f"del_confirm_{pos}"),
@@ -85,40 +92,43 @@ async def on_delete_choice(query: CallbackQuery):
             ]]
         )
         await query.message.edit_text(
-            f"В категории «{cat.name}» есть траты.\nУдалить категорию и все её траты?", reply_markup=kb
+            f"В категории «{cat.name}» есть траты.\nУдалить категорию и все её траты?",
+            reply_markup=kb
         )
         await query.answer()
     else:
-        delete_category(query.from_user.id, cat.id)
+        # простое удаление
+        delete_category(user_id, cat.id)
         await query.answer("Категория удалена")
-        # Показываем обновлённый список
-        await send_categories(query.message)
+        await send_categories(user_id, query.message)
 
-# Обработка подтверждения удаления по позиции
+# Подтверждение удаления вместе с тратами del_confirm_<номер>
 @dp.callback_query(lambda c: c.data and re.fullmatch(r"del_confirm_\d+", c.data))
 async def on_delete_confirm(query: CallbackQuery):
     pos = int(query.data.rsplit("_", 1)[1])
-    cats = get_categories(query.from_user.id)
+    user_id = query.from_user.id
+    cats = get_categories(user_id)
     if pos < 1 or pos > len(cats):
         return await query.answer("Неверный выбор", show_alert=True)
 
-    real_cat_id = cats[pos - 1].id
-    delete_category_and_expenses(query.from_user.id, real_cat_id)
+    real_id = cats[pos - 1].id
+    delete_category_and_expenses(user_id, real_id)
     await query.answer("Категория и все её траты удалены")
-    await send_categories(query.message)
+    await send_categories(user_id, query.message)
 
 @dp.callback_query(lambda c: c.data == "cat_delete_cancel")
 async def on_delete_cancel(query: CallbackQuery):
     await query.answer("Удаление отменено", show_alert=True)
-    await send_categories(query.message)
+    await send_categories(query.from_user.id, query.message)
 
 @dp.message(lambda m: user_states.get(m.from_user.id) == "adding")
 async def on_new_category(message: Message):
     name = message.text.strip()
-    existing = [c.name for c in get_categories(message.from_user.id)]
+    user_id = message.from_user.id
+    existing = [c.name for c in get_categories(user_id)]
     if name in existing:
         await message.answer(f"Категория «{name}» уже существует.", reply_markup=main_kb)
     else:
-        add_category(message.from_user.id, name)
+        add_category(user_id, name)
         await message.answer(f"Категория «{name}» добавлена.", reply_markup=main_kb)
-    user_states.pop(message.from_user.id, None)
+    user_states.pop(user_id, None)
