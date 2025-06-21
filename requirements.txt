@@ -1,0 +1,6 @@
+python-dotenv
+aiogram # или python-telegram-bot
+SQLAlchemy # или psycopg2, sqlite3
+APScheduler
+matplotlib
+pandas
