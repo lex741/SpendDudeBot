@@ -43,7 +43,7 @@ async def balance_set_apply(message: Message):
         )
     set_user_balance(message.from_user.id, amount)
     await message.answer(
-        f"Баланс установлен: {amount:.2f} ₽",
+        f"Баланс установлен: {amount:.2f} ₴",
         reply_markup=main_kb
     )
     user_balance_state.pop(message.from_user.id, None)
